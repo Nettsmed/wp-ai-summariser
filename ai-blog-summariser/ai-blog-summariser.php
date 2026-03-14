@@ -360,6 +360,10 @@ function aibs_save_post( $post_id, $post, $update ) {
 		return;
 	}
 
+	if ( ! current_user_can( 'edit_post', $post_id ) ) {
+		return;
+	}
+
 	if ( 'publish' !== $post->post_status ) {
 		return;
 	}
@@ -374,11 +378,8 @@ function aibs_save_post( $post_id, $post, $update ) {
 		return;
 	}
 
-	if ( 'on_publish' === $settings['auto_generate'] ) {
-		$already_generated = get_post_meta( $post_id, AIBS_META_GENERATED, true );
-		if ( ! empty( $already_generated ) ) {
-			return;
-		}
+	if ( 'on_publish' === $settings['auto_generate'] && get_post_meta( $post_id, AIBS_META_SUMMARY, true ) ) {
+		return;
 	}
 
 	$result = aibs_generate_summary( $post_id );
@@ -432,39 +433,54 @@ function aibs_meta_box_callback( $post ) {
 		</button>
 		<span id="aibs-regenerate-status" style="margin-left:8px;"></span>
 	</p>
-	<script>
-	document.getElementById('aibs-regenerate-btn').addEventListener('click', function(e) {
-		e.preventDefault();
-		var btn = this;
-		var status = document.getElementById('aibs-regenerate-status');
-		btn.disabled = true;
-		status.textContent = 'Generating...';
-		fetch(ajaxurl, {
-			method: 'POST',
-			headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-			body: new URLSearchParams({
-				action: 'aibs_regenerate',
-				post_id: btn.dataset.postId,
-				nonce: document.getElementById('aibs_meta_nonce').value
-			})
-		})
-		.then(r => r.json())
-		.then(data => {
-			if (data.success) {
-				document.querySelector('textarea[name="aibs_summary"]').value = data.data.summary;
-				status.textContent = 'Summary updated!';
-			} else {
-				status.textContent = 'Error: ' + (data.data || 'Unknown error');
-			}
-			btn.disabled = false;
-		})
-		.catch(() => {
-			status.textContent = 'Request failed.';
-			btn.disabled = false;
-		});
-	});
-	</script>
 	<?php
+}
+
+add_action( 'admin_enqueue_scripts', 'aibs_enqueue_admin_scripts' );
+
+function aibs_enqueue_admin_scripts( $hook ) {
+	if ( ! in_array( $hook, [ 'post.php', 'post-new.php' ], true ) ) {
+		return;
+	}
+
+	wp_enqueue_script( 'aibs-admin', false, [], AIBS_VERSION, true );
+
+	wp_localize_script( 'aibs-admin', 'aibsData', [
+		'ajaxurl' => admin_url( 'admin-ajax.php' ),
+	] );
+
+	$js = "document.getElementById('aibs-regenerate-btn').addEventListener('click', function(e) {
+	e.preventDefault();
+	var btn = this;
+	var status = document.getElementById('aibs-regenerate-status');
+	btn.disabled = true;
+	status.textContent = 'Generating...';
+	fetch(aibsData.ajaxurl, {
+		method: 'POST',
+		headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+		body: new URLSearchParams({
+			action: 'aibs_regenerate',
+			post_id: btn.dataset.postId,
+			nonce: document.getElementById('aibs_meta_nonce').value
+		})
+	})
+	.then(r => r.json())
+	.then(data => {
+		if (data.success) {
+			document.querySelector('textarea[name=\"aibs_summary\"]').value = data.data.summary;
+			status.textContent = 'Summary updated!';
+		} else {
+			status.textContent = 'Error: ' + (data.data || 'Unknown error');
+		}
+		btn.disabled = false;
+	})
+	.catch(() => {
+		status.textContent = 'Request failed.';
+		btn.disabled = false;
+	});
+});";
+
+	wp_add_inline_script( 'aibs-admin', $js );
 }
 
 add_action( 'save_post', 'aibs_save_meta_box', 10, 2 );

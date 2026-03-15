@@ -3,7 +3,7 @@
  * Plugin Name: AI Blog Summariser
  * Plugin URI:  https://github.com/Nettsmed/wp-ai-summariser
  * Description: Automatically generates AI-powered summaries for blog posts using the Anthropic Claude API.
- * Version:     1.0.0
+ * Version:     1.1.0
  * Author:      Nettsmed
  * License:     GPL-2.0+
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'AIBS_VERSION', '1.0.0' );
+define( 'AIBS_VERSION', '1.1.0' );
 define( 'AIBS_OPTION_KEY', 'aibs_settings' );
 define( 'AIBS_META_SUMMARY', '_ai_summary' );
 define( 'AIBS_META_GENERATED', '_ai_summary_generated' );
@@ -382,6 +382,19 @@ function aibs_save_post( $post_id, $post, $update ) {
 		return;
 	}
 
+	// Schedule background generation so save_post returns immediately.
+	if ( ! wp_next_scheduled( 'aibs_background_generate', [ $post_id ] ) ) {
+		wp_schedule_single_event( time(), 'aibs_background_generate', [ $post_id ] );
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Background cron handler
+// ---------------------------------------------------------------------------
+
+add_action( 'aibs_background_generate', 'aibs_do_background_generate' );
+
+function aibs_do_background_generate( $post_id ) {
 	$result = aibs_generate_summary( $post_id );
 
 	if ( is_wp_error( $result ) ) {

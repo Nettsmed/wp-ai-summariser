@@ -389,6 +389,7 @@ function aibs_save_post( $post_id, $post, $update ) {
 	}
 
 	update_post_meta( $post_id, AIBS_META_SUMMARY, $result );
+	update_post_meta( $post_id, 'article_summary', $result );
 	update_post_meta( $post_id, AIBS_META_GENERATED, time() );
 }
 
@@ -535,6 +536,7 @@ function aibs_ajax_regenerate() {
 	}
 
 	update_post_meta( $post_id, AIBS_META_SUMMARY, $result );
+	update_post_meta( $post_id, 'article_summary', $result );
 	update_post_meta( $post_id, AIBS_META_GENERATED, time() );
 
 	wp_send_json_success( [ 'summary' => $result ] );

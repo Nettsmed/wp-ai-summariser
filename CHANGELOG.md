@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-03-23
+
+### Added
+- REST API support via `rest_after_insert_{post_type}` hooks — summaries are now generated when posts are published through the REST API (e.g. via nettsmed-notion-publisher or other headless clients)
+- New `aibs_rest_after_insert()` handler that calls `aibs_do_background_generate()` directly, bypassing WP-Cron (which depends on page views that may never come after API publishing)
+
+### Fixed
+- Posts published via REST API no longer silently skip summary generation due to `current_user_can` check failing in non-authenticated API contexts
+
 ## [1.1.0] - 2026-03-15
 
 ### Changed

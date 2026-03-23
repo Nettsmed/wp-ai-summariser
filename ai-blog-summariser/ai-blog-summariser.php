@@ -3,7 +3,7 @@
  * Plugin Name: AI Blog Summariser
  * Plugin URI:  https://github.com/Nettsmed/wp-ai-summariser
  * Description: Automatically generates AI-powered summaries for blog posts using the Anthropic Claude API.
- * Version:     1.1.0
+ * Version:     1.2.0
  * Author:      Nettsmed
  * License:     GPL-2.0+
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'AIBS_VERSION', '1.1.0' );
+define( 'AIBS_VERSION', '1.2.0' );
 define( 'AIBS_OPTION_KEY', 'aibs_settings' );
 define( 'AIBS_META_SUMMARY', '_ai_summary' );
 define( 'AIBS_META_GENERATED', '_ai_summary_generated' );
@@ -354,6 +354,48 @@ function aibs_generate_summary( $post_id ) {
 // ---------------------------------------------------------------------------
 
 add_action( 'save_post', 'aibs_save_post', 20, 3 );
+
+// ---------------------------------------------------------------------------
+// REST API hooks — auto-generate on headless/API publish
+// ---------------------------------------------------------------------------
+
+add_action( 'rest_api_init', 'aibs_register_rest_hooks' );
+
+function aibs_register_rest_hooks() {
+	$settings = aibs_get_settings();
+
+	foreach ( $settings['post_types'] as $post_type ) {
+		add_action( "rest_after_insert_{$post_type}", 'aibs_rest_after_insert', 20, 2 );
+	}
+}
+
+/**
+ * Handle post creation/update via REST API.
+ *
+ * Skips current_user_can check (REST API handles permissions via
+ * permission_callback) and calls aibs_do_background_generate() directly
+ * instead of scheduling via WP-Cron (which depends on page views).
+ *
+ * @param WP_Post         $post    Inserted or updated post object.
+ * @param WP_REST_Request $request Request object.
+ */
+function aibs_rest_after_insert( $post, $request ) {
+	if ( 'publish' !== $post->post_status ) {
+		return;
+	}
+
+	$settings = aibs_get_settings();
+
+	if ( 'manual' === $settings['auto_generate'] ) {
+		return;
+	}
+
+	if ( 'on_publish' === $settings['auto_generate'] && get_post_meta( $post->ID, AIBS_META_SUMMARY, true ) ) {
+		return;
+	}
+
+	aibs_do_background_generate( $post->ID );
+}
 
 function aibs_save_post( $post_id, $post, $update ) {
 	if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {

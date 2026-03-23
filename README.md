@@ -7,6 +7,7 @@ Built by [Nettsmed](https://nettsmed.no). First deployed on [nettsmed.no](https:
 ## Features
 
 - Auto-generates a concise summary when a post is published or updated
+- REST API support — works with headless publishers (e.g. nettsmed-notion-publisher) via `rest_after_insert` hooks
 - Background processing — save post returns instantly, summary appears seconds later
 - Configurable AI model (Claude Sonnet, Haiku, Opus)
 - Language support: auto-detect, English, Norwegian Bokmål
